@@ -18,5 +18,12 @@ create index if not exists bookings_status_idx on public.bookings (status);
 
 alter table public.bookings enable row level security;
 
--- No public policies: anon/authenticated cannot read or write.
--- The app uses SUPABASE_SERVICE_ROLE_KEY on the server (bypasses RLS).
+-- Allow API roles to access the table.
+-- The app uses SUPABASE_SERVICE_ROLE_KEY (bypasses RLS).
+-- Without these grants, inserts fail with: permission denied for table bookings
+grant usage on schema public to postgres, anon, authenticated, service_role;
+grant all on table public.bookings to postgres, service_role;
+grant select, insert, update, delete on table public.bookings to anon, authenticated;
+
+-- No public RLS policies: anon/authenticated still cannot read/write via RLS.
+-- service_role bypasses RLS and can fully manage rows.
