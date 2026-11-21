@@ -278,13 +278,13 @@ body {
 }
 
 .pill-brand {
-  @apply inline-flex items-center rounded-lg px-2 py-1 caption-3;
+  @apply inline-flex items-center rounded-lg px-2 py-1 text-xs font-semibold leading-4;
   background: var(--lamp-soft);
   color: var(--lamp-deep);
 }
 
 .pill-host {
-  @apply inline-flex items-center rounded-lg px-2 py-1 caption-3;
+  @apply inline-flex items-center rounded-lg px-2 py-1 text-xs font-semibold leading-4;
   background: var(--accent-soft);
   color: var(--accent);
 }
