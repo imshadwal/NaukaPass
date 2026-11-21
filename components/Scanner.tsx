@@ -38,14 +38,31 @@ type ScanState =
   | { kind: "ready"; booking: Booking; message?: string; already?: boolean }
   | { kind: "error"; message: string };
 
+async function stopScanner(scanner: Html5Qrcode | null) {
+  if (!scanner) return;
+  try {
+    if (scanner.isScanning) {
+      await scanner.stop();
+    }
+    scanner.clear();
+  } catch {
+    // ignore cleanup errors
+  }
+}
+
 export function Scanner({ initialId }: { initialId?: string }) {
-  const [state, setState] = useState<ScanState>({ kind: "idle" });
+  const [state, setState] = useState<ScanState>(
+    initialId ? { kind: "loading" } : { kind: "idle" },
+  );
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [manualValue, setManualValue] = useState("");
+  const [session, setSession] = useState(0);
   const [pending, startTransition] = useTransition();
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lastCodeRef = useRef<string>("");
   const regionId = "naukapass-reader";
+
+  const showScanner = state.kind === "idle" || state.kind === "error";
 
   const loadBooking = useCallback(async (id: string) => {
     setState({ kind: "loading" });
@@ -100,13 +117,19 @@ export function Scanner({ initialId }: { initialId?: string }) {
   }, [initialId, loadBooking]);
 
   useEffect(() => {
+    if (!showScanner) {
+      const active = scannerRef.current;
+      scannerRef.current = null;
+      void stopScanner(active);
+      return;
+    }
+
     let cancelled = false;
 
     async function start() {
+      setCameraError(null);
       try {
-        const scanner = new Html5Qrcode(regionId, {
-          verbose: false,
-        });
+        const scanner = new Html5Qrcode(regionId, { verbose: false });
         scannerRef.current = scanner;
 
         const cameras = await Html5Qrcode.getCameras();
@@ -149,22 +172,11 @@ export function Scanner({ initialId }: { initialId?: string }) {
 
     return () => {
       cancelled = true;
-      const scanner = scannerRef.current;
+      const active = scannerRef.current;
       scannerRef.current = null;
-      if (scanner?.isScanning) {
-        void scanner
-          .stop()
-          .then(() => scanner.clear())
-          .catch(() => undefined);
-      } else if (scanner) {
-        try {
-          scanner.clear();
-        } catch {
-          // ignore
-        }
-      }
+      void stopScanner(active);
     };
-  }, [handleDecoded]);
+  }, [showScanner, session, handleDecoded]);
 
   function onMarkBoarded() {
     if (state.kind !== "ready") return;
@@ -189,7 +201,9 @@ export function Scanner({ initialId }: { initialId?: string }) {
 
   function reset() {
     lastCodeRef.current = "";
+    setManualValue("");
     setState({ kind: "idle" });
+    setSession((n) => n + 1);
   }
 
   function submitManual(e: React.FormEvent) {
@@ -228,48 +242,53 @@ export function Scanner({ initialId }: { initialId?: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="card-surface overflow-hidden">
-        <div id={regionId} className="w-full min-h-72 bg-ink" />
-        <div id="naukapass-file-reader" className="hidden" />
-        {cameraError ? (
-          <p className="body-5 text-danger p-4" role="alert">
-            {cameraError}
-          </p>
-        ) : (
-          <p className="caption-2 text-ink-muted p-3 text-center text-pretty">
-            Fill the green box with only the QR square. Printed paper works better
-            than scanning another phone screen.
-          </p>
-        )}
-      </div>
+      <div id="naukapass-file-reader" className="hidden" />
 
-      <div className="card-surface p-5 space-y-4">
-        <p className="title-4">If camera is stuck</p>
-        <label className="btn-secondary w-full cursor-pointer">
-          Upload pass photo
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="sr-only"
-            onChange={onFileChange}
-          />
-        </label>
-        <form onSubmit={submitManual} className="space-y-3">
-          <label className="block space-y-2">
-            <span className="title-4">Or paste booking link / id</span>
-            <input
-              value={manualValue}
-              onChange={(e) => setManualValue(e.target.value)}
-              className="field"
-              placeholder="Paste scan URL or UUID"
-            />
-          </label>
-          <button type="submit" className="btn-primary w-full">
-            Look up pass
-          </button>
-        </form>
-      </div>
+      {showScanner ? (
+        <>
+          <div className="card-surface overflow-hidden">
+            <div id={regionId} className="w-full min-h-72 bg-ink" />
+            {cameraError ? (
+              <p className="body-5 text-danger p-4" role="alert">
+                {cameraError}
+              </p>
+            ) : (
+              <p className="caption-2 text-ink-muted p-3 text-center text-pretty">
+                Fill the green box with only the QR square. Printed paper works
+                better than scanning another phone screen.
+              </p>
+            )}
+          </div>
+
+          <div className="card-surface p-5 space-y-4">
+            <p className="title-4">If camera is stuck</p>
+            <label className="btn-secondary w-full cursor-pointer">
+              Upload pass photo
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="sr-only"
+                onChange={onFileChange}
+              />
+            </label>
+            <form onSubmit={submitManual} className="space-y-3">
+              <label className="block space-y-2">
+                <span className="title-4">Or paste booking link / id</span>
+                <input
+                  value={manualValue}
+                  onChange={(e) => setManualValue(e.target.value)}
+                  className="field"
+                  placeholder="Paste scan URL or UUID"
+                />
+              </label>
+              <button type="submit" className="btn-primary w-full">
+                Look up pass
+              </button>
+            </form>
+          </div>
+        </>
+      ) : null}
 
       <div className="card-surface p-5 space-y-4 min-h-40">
         {state.kind === "idle" ? (
@@ -332,6 +351,12 @@ export function Scanner({ initialId }: { initialId?: string }) {
                 Scan next pass
               </button>
             )}
+
+            {state.booking.status === "pending" ? (
+              <button type="button" className="btn-ghost" onClick={reset}>
+                Scan a different pass
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
