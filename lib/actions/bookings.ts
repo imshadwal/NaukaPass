@@ -50,8 +50,15 @@ export async function createBooking(
     } else {
       await localCreateBooking(leaderName, contactNumber, pax);
     }
-  } catch {
-    return { ok: false, message: "Could not create booking. Try again." };
+  } catch (error) {
+    const detail =
+      error instanceof Error && error.message
+        ? error.message
+        : "Unknown error";
+    return {
+      ok: false,
+      message: `Could not create booking. ${detail}`,
+    };
   }
 
   revalidatePath("/dashboard");
