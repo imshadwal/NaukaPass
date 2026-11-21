@@ -14,6 +14,13 @@ import {
   localMarkScanned,
   localUpdateBooking,
 } from "@/lib/local-store";
+import { isSupabaseMode } from "@/lib/mode";
+import {
+  supabaseCreateBooking,
+  supabaseDeleteBooking,
+  supabaseMarkScanned,
+  supabaseUpdateBooking,
+} from "@/lib/supabase-store";
 import type { ActionResult, Booking } from "@/lib/types";
 
 export async function createBooking(
@@ -37,7 +44,16 @@ export async function createBooking(
     return { ok: false, message: "Enter a valid passenger count (1 to 500)." };
   }
 
-  await localCreateBooking(leaderName, contactNumber, pax);
+  try {
+    if (isSupabaseMode()) {
+      await supabaseCreateBooking(leaderName, contactNumber, pax);
+    } else {
+      await localCreateBooking(leaderName, contactNumber, pax);
+    }
+  } catch {
+    return { ok: false, message: "Could not create booking. Try again." };
+  }
+
   revalidatePath("/dashboard");
   redirect("/dashboard");
 }
@@ -71,13 +87,10 @@ export async function updateBooking(
     return { ok: false, message: "Choose a valid status." };
   }
 
-  const updated = await localUpdateBooking(
-    id,
-    leaderName,
-    contactNumber,
-    pax,
-    status,
-  );
+  const updated = isSupabaseMode()
+    ? await supabaseUpdateBooking(id, leaderName, contactNumber, pax, status)
+    : await localUpdateBooking(id, leaderName, contactNumber, pax, status);
+
   if (!updated) {
     return { ok: false, message: "Could not update booking. Try again." };
   }
@@ -91,7 +104,12 @@ export async function deleteBooking(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
-  await localDeleteBooking(id);
+  if (isSupabaseMode()) {
+    await supabaseDeleteBooking(id);
+  } else {
+    await localDeleteBooking(id);
+  }
+
   revalidatePath("/dashboard");
   redirect("/dashboard");
 }
@@ -117,7 +135,10 @@ export async function markScanned(
     };
   }
 
-  const data = await localMarkScanned(id);
+  const data = isSupabaseMode()
+    ? await supabaseMarkScanned(id)
+    : await localMarkScanned(id);
+
   if (!data) {
     return { ok: false, message: "Could not mark as boarded. Try again." };
   }
