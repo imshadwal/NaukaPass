@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NaukaPass
 
-## Getting Started
+Boat boarding passes for **Dev Deepawali on the Ganges**, hosted by [TLS Hotels](https://tlshotels.com/) (The Lavish Stay).
 
-First, run the development server:
+Staff create a group booking (leader name, contact number, passengers), download or print a pass image with QR plus group details, then scan it at boarding. A second scan shows that the pass was already scanned.
+
+## Stack
+
+- Next.js (App Router) + Tailwind CSS
+- JSON file store (`.data/bookings.json`) — fine for ~50 groups
+- Shared admin login from `.env.local`
+- Phone or tablet camera scan (`html5-qrcode`)
+
+## Setup
 
 ```bash
+cp .env.example .env.local
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) and sign in with the username/password in `.env.local`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Where data lives
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+All bookings are stored in:
 
-## Learn More
+```text
+.data/bookings.json
+```
 
-To learn more about Next.js, take a look at the following resources:
+That folder is gitignored. Back it up if you care about the list after the event.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deploy note
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Run this on **one machine** that can write to disk (laptop at the ghat, or a small VPS with `npm run build && npm start`).
 
-## Deploy on Vercel
+Avoid multi-instance serverless hosts (e.g. default Vercel) for this JSON setup — the file would not persist reliably across instances. Phone camera scanning still needs **HTTPS** (or localhost).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Staff flow
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Dashboard** — create group booking.
+2. **View QR** — download or print the pass.
+3. **Scan** — confirm details, **Mark as boarded**.
+4. Scanning again shows **This pass was already scanned.**
