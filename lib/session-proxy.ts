@@ -8,7 +8,7 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isLogin = pathname === "/login";
   const isPublic = isLogin || pathname === "/";
-  const username = readLocalSessionUser(
+  const username = await readLocalSessionUser(
     request.cookies.get(LOCAL_SESSION_COOKIE)?.value,
   );
 

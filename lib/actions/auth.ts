@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import {
   clearLocalSession,
+  getLocalCredentials,
   setLocalSession,
   verifyLocalCredentials,
 } from "@/lib/local-auth";
@@ -21,13 +22,23 @@ export async function signIn(
   }
 
   if (!verifyLocalCredentials(username, password)) {
+    const expected = getLocalCredentials();
     return {
       ok: false,
-      message: "Sign in failed. Check username and password.",
+      message: `Sign in failed. Use username "${expected.username}" and the password from Vercel env.`,
     };
   }
 
-  await setLocalSession(username);
+  try {
+    await setLocalSession(username);
+  } catch (error) {
+    const detail =
+      error instanceof Error && error.message
+        ? error.message
+        : "Could not create session.";
+    return { ok: false, message: `Sign in failed. ${detail}` };
+  }
+
   redirect(next.startsWith("/") ? next : "/dashboard");
 }
 
