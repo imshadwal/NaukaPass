@@ -6,24 +6,30 @@ import { getBooking, markScanned } from "@/lib/actions/bookings";
 import type { Booking } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
 
+const UUID_RE =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;
+
 function extractBookingId(raw: string): string | null {
   const trimmed = raw.trim();
-  const uuidRe =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (uuidRe.test(trimmed)) return trimmed;
+
+  const direct = trimmed.match(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+  );
+  if (direct) return direct[0];
 
   try {
     const url = new URL(trimmed);
     const id = url.searchParams.get("id");
-    if (id && uuidRe.test(id)) return id;
-    const parts = url.pathname.split("/").filter(Boolean);
-    const last = parts[parts.length - 1];
-    if (last && uuidRe.test(last)) return last;
+    if (id && UUID_RE.test(id)) {
+      const match = id.match(UUID_RE);
+      if (match) return match[0];
+    }
   } catch {
     // not a URL
   }
 
-  return null;
+  const embedded = trimmed.match(UUID_RE);
+  return embedded ? embedded[0] : null;
 }
 
 type ScanState =
@@ -35,6 +41,7 @@ type ScanState =
 export function Scanner({ initialId }: { initialId?: string }) {
   const [state, setState] = useState<ScanState>({ kind: "idle" });
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [manualValue, setManualValue] = useState("");
   const [pending, startTransition] = useTransition();
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lastCodeRef = useRef<string>("");
@@ -42,22 +49,49 @@ export function Scanner({ initialId }: { initialId?: string }) {
 
   const loadBooking = useCallback(async (id: string) => {
     setState({ kind: "loading" });
-    const booking = await getBooking(id);
-    if (!booking) {
-      setState({ kind: "error", message: "No booking found for this QR code." });
-      return;
-    }
-    if (booking.status === "scanned") {
+    try {
+      const booking = await getBooking(id);
+      if (!booking) {
+        setState({
+          kind: "error",
+          message: "No booking found for this QR code.",
+        });
+        return;
+      }
+      if (booking.status === "scanned") {
+        setState({
+          kind: "ready",
+          booking,
+          already: true,
+          message: "This pass was already scanned.",
+        });
+        return;
+      }
+      setState({ kind: "ready", booking });
+    } catch {
       setState({
-        kind: "ready",
-        booking,
-        already: true,
-        message: "This pass was already scanned.",
+        kind: "error",
+        message: "Could not look up this pass. Try again.",
       });
-      return;
     }
-    setState({ kind: "ready", booking });
   }, []);
+
+  const handleDecoded = useCallback(
+    (decoded: string) => {
+      if (decoded === lastCodeRef.current) return;
+      lastCodeRef.current = decoded;
+      const id = extractBookingId(decoded);
+      if (!id) {
+        setState({
+          kind: "error",
+          message: "QR code is not a NaukaPass booking.",
+        });
+        return;
+      }
+      void loadBooking(id);
+    },
+    [loadBooking],
+  );
 
   useEffect(() => {
     if (initialId) {
@@ -70,30 +104,42 @@ export function Scanner({ initialId }: { initialId?: string }) {
 
     async function start() {
       try {
-        const scanner = new Html5Qrcode(regionId);
+        const scanner = new Html5Qrcode(regionId, {
+          verbose: false,
+        });
         scannerRef.current = scanner;
+
+        const cameras = await Html5Qrcode.getCameras();
+        if (!cameras.length) {
+          throw new Error("No camera found");
+        }
+
+        const backCamera =
+          cameras.find((c) => /back|rear|environment/i.test(c.label)) ||
+          cameras[cameras.length - 1];
+
         await scanner.start(
-          { facingMode: "environment" },
-          { fps: 8, qrbox: { width: 240, height: 240 } },
+          backCamera.id,
+          {
+            fps: 12,
+            qrbox: (viewfinderWidth, viewfinderHeight) => {
+              const edge = Math.floor(
+                Math.min(viewfinderWidth, viewfinderHeight) * 0.75,
+              );
+              return { width: edge, height: edge };
+            },
+            aspectRatio: 1,
+            disableFlip: false,
+          },
           (decoded) => {
-            if (decoded === lastCodeRef.current) return;
-            lastCodeRef.current = decoded;
-            const id = extractBookingId(decoded);
-            if (!id) {
-              setState({
-                kind: "error",
-                message: "QR code is not a NaukaPass booking.",
-              });
-              return;
-            }
-            void loadBooking(id);
+            handleDecoded(decoded);
           },
           () => undefined,
         );
       } catch {
         if (!cancelled) {
           setCameraError(
-            "Camera could not start. Allow camera access and use HTTPS on a phone or tablet.",
+            "Camera could not start. Allow camera permission, or use photo upload / paste id below.",
           );
         }
       }
@@ -106,10 +152,19 @@ export function Scanner({ initialId }: { initialId?: string }) {
       const scanner = scannerRef.current;
       scannerRef.current = null;
       if (scanner?.isScanning) {
-        void scanner.stop().then(() => scanner.clear()).catch(() => undefined);
+        void scanner
+          .stop()
+          .then(() => scanner.clear())
+          .catch(() => undefined);
+      } else if (scanner) {
+        try {
+          scanner.clear();
+        } catch {
+          // ignore
+        }
       }
     };
-  }, [loadBooking]);
+  }, [handleDecoded]);
 
   function onMarkBoarded() {
     if (state.kind !== "ready") return;
@@ -137,19 +192,83 @@ export function Scanner({ initialId }: { initialId?: string }) {
     setState({ kind: "idle" });
   }
 
+  function submitManual(e: React.FormEvent) {
+    e.preventDefault();
+    const id = extractBookingId(manualValue);
+    if (!id) {
+      setState({
+        kind: "error",
+        message: "Paste a NaukaPass link or booking id.",
+      });
+      return;
+    }
+    lastCodeRef.current = "";
+    void loadBooking(id);
+  }
+
+  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    try {
+      setState({ kind: "loading" });
+      const temp = new Html5Qrcode("naukapass-file-reader");
+      const decoded = await temp.scanFile(file, true);
+      temp.clear();
+      handleDecoded(decoded);
+    } catch {
+      setState({
+        kind: "error",
+        message:
+          "Could not read QR from that image. Try a clearer photo of only the QR square, or paste the booking id.",
+      });
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="card-surface overflow-hidden">
-        <div id={regionId} className="w-full min-h-64 bg-ink" />
+        <div id={regionId} className="w-full min-h-72 bg-ink" />
+        <div id="naukapass-file-reader" className="hidden" />
         {cameraError ? (
           <p className="body-5 text-danger p-4" role="alert">
             {cameraError}
           </p>
         ) : (
-          <p className="caption-2 text-ink-muted p-3 text-center">
-            Point the camera at a NaukaPass QR code
+          <p className="caption-2 text-ink-muted p-3 text-center text-pretty">
+            Fill the green box with only the QR square. Printed paper works better
+            than scanning another phone screen.
           </p>
         )}
+      </div>
+
+      <div className="card-surface p-5 space-y-4">
+        <p className="title-4">If camera is stuck</p>
+        <label className="btn-secondary w-full cursor-pointer">
+          Upload pass photo
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="sr-only"
+            onChange={onFileChange}
+          />
+        </label>
+        <form onSubmit={submitManual} className="space-y-3">
+          <label className="block space-y-2">
+            <span className="title-4">Or paste booking link / id</span>
+            <input
+              value={manualValue}
+              onChange={(e) => setManualValue(e.target.value)}
+              className="field"
+              placeholder="Paste scan URL or UUID"
+            />
+          </label>
+          <button type="submit" className="btn-primary w-full">
+            Look up pass
+          </button>
+        </form>
       </div>
 
       <div className="card-surface p-5 space-y-4 min-h-40">

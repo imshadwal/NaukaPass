@@ -38,7 +38,8 @@ export async function buildPassImageDataUrl(
   const padding = 48;
   const qrDataUrl = await QRCode.toDataURL(details.value, {
     width: qrSize,
-    margin: 1,
+    margin: 3,
+    errorCorrectionLevel: "M",
     color: { dark: "#181818", light: "#ffffff" },
   });
 
