@@ -40,8 +40,8 @@ export default async function DashboardPage() {
         </header>
 
         <CreateBookingForm />
-        <BulkImportForm />
         <BookingList bookings={bookings} />
+        <BulkImportForm />
       </main>
     </>
   );
