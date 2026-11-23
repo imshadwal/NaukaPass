@@ -1,5 +1,6 @@
 import { AppNav } from "@/components/AppNav";
 import { BookingList } from "@/components/BookingList";
+import { BulkImportForm } from "@/components/BulkImportForm";
 import { CreateBookingForm } from "@/components/CreateBookingForm";
 import { listBookings } from "@/lib/bookings-data";
 
@@ -39,6 +40,7 @@ export default async function DashboardPage() {
         </header>
 
         <CreateBookingForm />
+        <BulkImportForm />
         <BookingList bookings={bookings} />
       </main>
     </>

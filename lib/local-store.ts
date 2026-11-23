@@ -60,22 +60,41 @@ export async function localCreateBooking(
   boatType: BoatType,
   pax: number,
 ) {
+  const [booking] = await localCreateBookings([
+    {
+      leader_name: leaderName,
+      contact_number: contactNumber,
+      boat_type: boatType,
+      pax,
+    },
+  ]);
+  return booking;
+}
+
+export async function localCreateBookings(
+  rows: Array<{
+    leader_name: string;
+    contact_number: string;
+    boat_type: BoatType;
+    pax: number;
+  }>,
+) {
   const bookings = await readAll();
   const now = new Date().toISOString();
-  const booking: Booking = {
+  const created: Booking[] = rows.map((row) => ({
     id: randomUUID(),
-    leader_name: leaderName,
-    contact_number: contactNumber,
-    boat_type: boatType,
-    pax,
-    status: "pending",
+    leader_name: row.leader_name,
+    contact_number: row.contact_number,
+    boat_type: row.boat_type,
+    pax: row.pax,
+    status: "pending" as const,
     created_at: now,
     updated_at: now,
     scanned_at: null,
-  };
-  bookings.push(booking);
+  }));
+  bookings.push(...created);
   await writeAll(bookings);
-  return booking;
+  return created;
 }
 
 export async function localUpdateBooking(

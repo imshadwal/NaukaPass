@@ -9,8 +9,10 @@ import {
   parseStatus,
 } from "@/lib/booking-fields";
 import { getBooking as fetchBooking } from "@/lib/bookings-data";
+import { parseBookingsCsv } from "@/lib/csv-import";
 import {
   localCreateBooking,
+  localCreateBookings,
   localDeleteBooking,
   localMarkScanned,
   localUpdateBooking,
@@ -18,11 +20,18 @@ import {
 import { isSupabaseMode } from "@/lib/mode";
 import {
   supabaseCreateBooking,
+  supabaseCreateBookings,
   supabaseDeleteBooking,
   supabaseMarkScanned,
   supabaseUpdateBooking,
 } from "@/lib/supabase-store";
 import type { ActionResult, Booking } from "@/lib/types";
+
+export type BulkImportResult = ActionResult & {
+  created?: number;
+  skipped?: number;
+  details?: string[];
+};
 
 export async function createBooking(
   _prev: ActionResult,
@@ -68,6 +77,56 @@ export async function createBooking(
 
   revalidatePath("/dashboard");
   redirect("/dashboard");
+}
+
+export async function importBookingsCsv(
+  _prev: BulkImportResult,
+  formData: FormData,
+): Promise<BulkImportResult> {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, message: "Choose a CSV file to import." };
+  }
+
+  const text = await file.text();
+  const { rows, errors } = parseBookingsCsv(text);
+
+  if (rows.length === 0) {
+    return {
+      ok: false,
+      message: "No valid rows found in the CSV.",
+      details: errors.slice(0, 8).map((e) => `Line ${e.line}: ${e.message}`),
+    };
+  }
+
+  try {
+    if (isSupabaseMode()) {
+      await supabaseCreateBookings(rows);
+    } else {
+      await localCreateBookings(rows);
+    }
+  } catch (error) {
+    const detail =
+      error instanceof Error && error.message
+        ? error.message
+        : "Unknown error";
+    return {
+      ok: false,
+      message: `Could not import bookings. ${detail}`,
+    };
+  }
+
+  revalidatePath("/dashboard");
+  return {
+    ok: true,
+    created: rows.length,
+    skipped: errors.length,
+    message:
+      errors.length > 0
+        ? `Created ${rows.length} passes. Skipped ${errors.length} invalid rows.`
+        : `Created ${rows.length} passes.`,
+    details: errors.slice(0, 8).map((e) => `Line ${e.line}: ${e.message}`),
+  };
 }
 
 export async function updateBooking(

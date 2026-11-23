@@ -41,24 +41,44 @@ export async function supabaseCreateBooking(
   boatType: BoatType,
   pax: number,
 ) {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("bookings")
-    .insert({
+  const [booking] = await supabaseCreateBookings([
+    {
       leader_name: leaderName,
       contact_number: contactNumber,
       boat_type: boatType,
       pax,
-      status: "pending",
-    })
-    .select("*")
-    .single();
+    },
+  ]);
+  return booking;
+}
+
+export async function supabaseCreateBookings(
+  rows: Array<{
+    leader_name: string;
+    contact_number: string;
+    boat_type: BoatType;
+    pax: number;
+  }>,
+) {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("bookings")
+    .insert(
+      rows.map((row) => ({
+        leader_name: row.leader_name,
+        contact_number: row.contact_number,
+        boat_type: row.boat_type,
+        pax: row.pax,
+        status: "pending",
+      })),
+    )
+    .select("*");
 
   if (error || !data) {
-    throw new Error(error?.message || "Could not create booking");
+    throw new Error(error?.message || "Could not create bookings");
   }
 
-  return normalize(data as Booking);
+  return (data as Booking[]).map(normalize);
 }
 
 export async function supabaseUpdateBooking(
