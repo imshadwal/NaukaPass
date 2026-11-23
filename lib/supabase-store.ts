@@ -1,10 +1,14 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Booking, BookingStatus } from "@/lib/types";
+import type { BoatType, Booking, BookingStatus } from "@/lib/types";
 
 function normalize(booking: Booking): Booking {
   return {
     ...booking,
     contact_number: booking.contact_number ?? "",
+    boat_type:
+      booking.boat_type === "bajra_boat" || booking.boat_type === "motor_boat"
+        ? booking.boat_type
+        : "motor_boat",
   };
 }
 
@@ -34,6 +38,7 @@ export async function supabaseGetBooking(id: string): Promise<Booking | null> {
 export async function supabaseCreateBooking(
   leaderName: string,
   contactNumber: string,
+  boatType: BoatType,
   pax: number,
 ) {
   const supabase = createAdminClient();
@@ -42,6 +47,7 @@ export async function supabaseCreateBooking(
     .insert({
       leader_name: leaderName,
       contact_number: contactNumber,
+      boat_type: boatType,
       pax,
       status: "pending",
     })
@@ -59,6 +65,7 @@ export async function supabaseUpdateBooking(
   id: string,
   leaderName: string,
   contactNumber: string,
+  boatType: BoatType,
   pax: number,
   status: BookingStatus,
 ) {
@@ -83,6 +90,7 @@ export async function supabaseUpdateBooking(
     .update({
       leader_name: leaderName,
       contact_number: contactNumber,
+      boat_type: boatType,
       pax,
       status,
       scanned_at: scannedAt,

@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
-import type { Booking, BookingStatus } from "@/lib/types";
+import type { BoatType, Booking, BookingStatus } from "@/lib/types";
 
 const dataDir = path.join(process.cwd(), ".data");
 const storePath = path.join(dataDir, "bookings.json");
@@ -19,6 +19,10 @@ function normalize(booking: Booking): Booking {
   return {
     ...booking,
     contact_number: booking.contact_number ?? "",
+    boat_type:
+      booking.boat_type === "bajra_boat" || booking.boat_type === "motor_boat"
+        ? booking.boat_type
+        : "motor_boat",
   };
 }
 
@@ -53,6 +57,7 @@ export async function localGetBooking(id: string): Promise<Booking | null> {
 export async function localCreateBooking(
   leaderName: string,
   contactNumber: string,
+  boatType: BoatType,
   pax: number,
 ) {
   const bookings = await readAll();
@@ -61,6 +66,7 @@ export async function localCreateBooking(
     id: randomUUID(),
     leader_name: leaderName,
     contact_number: contactNumber,
+    boat_type: boatType,
     pax,
     status: "pending",
     created_at: now,
@@ -76,6 +82,7 @@ export async function localUpdateBooking(
   id: string,
   leaderName: string,
   contactNumber: string,
+  boatType: BoatType,
   pax: number,
   status: BookingStatus,
 ): Promise<Booking | null> {
@@ -88,9 +95,10 @@ export async function localUpdateBooking(
   let scannedAt = current.scanned_at;
 
   if (status === "scanned") {
-    scannedAt = current.status === "scanned" && current.scanned_at
-      ? current.scanned_at
-      : now;
+    scannedAt =
+      current.status === "scanned" && current.scanned_at
+        ? current.scanned_at
+        : now;
   } else {
     scannedAt = null;
   }
@@ -99,6 +107,7 @@ export async function localUpdateBooking(
     ...current,
     leader_name: leaderName,
     contact_number: contactNumber,
+    boat_type: boatType,
     pax,
     status,
     scanned_at: scannedAt,

@@ -1,4 +1,4 @@
-import type { BookingStatus } from "@/lib/types";
+import type { BoatType, BookingStatus } from "@/lib/types";
 
 export function parsePax(value: FormDataEntryValue | null) {
   const n = Number(value);
@@ -23,5 +23,11 @@ export function parseContactNumber(value: FormDataEntryValue | null) {
 export function parseStatus(value: FormDataEntryValue | null): BookingStatus | null {
   const status = String(value ?? "").trim();
   if (status === "pending" || status === "scanned") return status;
+  return null;
+}
+
+export function parseBoatType(value: FormDataEntryValue | null): BoatType | null {
+  const boatType = String(value ?? "").trim();
+  if (boatType === "motor_boat" || boatType === "bajra_boat") return boatType;
   return null;
 }

@@ -6,6 +6,7 @@ create table if not exists public.bookings (
   id uuid primary key default gen_random_uuid(),
   leader_name text not null,
   contact_number text not null default '',
+  boat_type text not null default 'motor_boat' check (boat_type in ('motor_boat', 'bajra_boat')),
   pax integer not null check (pax >= 1 and pax <= 500),
   status text not null default 'pending' check (status in ('pending', 'scanned')),
   created_at timestamptz not null default now(),

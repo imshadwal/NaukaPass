@@ -4,6 +4,7 @@ import { AppNav } from "@/components/AppNav";
 import { QrDisplay } from "@/components/QrDisplay";
 import { StatusBadge } from "@/components/StatusBadge";
 import { getBooking } from "@/lib/bookings-data";
+import { boatTypeLabel } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function BookingPage({
   const qrValue = siteUrl
     ? `${siteUrl}/scan?id=${booking.id}`
     : booking.id;
+  const boatLabel = boatTypeLabel(booking.boat_type);
 
   return (
     <>
@@ -34,7 +36,7 @@ export default async function BookingPage({
             <StatusBadge status={booking.status} />
           </div>
           <p className="body-6 text-ink-muted">
-            {booking.contact_number || "No contact"} · {booking.pax}{" "}
+            {boatLabel} · {booking.contact_number || "No contact"} · {booking.pax}{" "}
             {booking.pax === 1 ? "passenger" : "passengers"} · boarding pass ready to
             print or download
           </p>
@@ -44,6 +46,7 @@ export default async function BookingPage({
           value={qrValue}
           leaderName={booking.leader_name}
           contactNumber={booking.contact_number}
+          boatTypeLabel={boatLabel}
           pax={booking.pax}
           bookingId={booking.id}
         />

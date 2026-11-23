@@ -4,6 +4,7 @@ export type PassImageDetails = {
   value: string;
   leaderName: string;
   contactNumber: string;
+  boatTypeLabel: string;
   pax: number;
   bookingId: string;
 };
@@ -59,7 +60,7 @@ export async function buildPassImageDataUrl(
 
   canvas.width = width;
   // Temporary height; we measure then redraw if needed — fixed layout is simpler
-  const height = 980;
+  const height = 1040;
   canvas.height = height;
 
   ctx.fillStyle = "#ffffff";
@@ -88,6 +89,10 @@ export async function buildPassImageDataUrl(
   }
 
   y += 8;
+  ctx.fillStyle = "#0f3d66";
+  ctx.font = "600 28px Geist, ui-sans-serif, system-ui, sans-serif";
+  ctx.fillText(details.boatTypeLabel, width / 2, y);
+  y += 40;
   ctx.fillStyle = "#666666";
   ctx.font = "500 26px Geist, ui-sans-serif, system-ui, sans-serif";
   ctx.fillText(paxLabel, width / 2, y);

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Modal } from "@/components/Modal";
 import { QrDisplay } from "@/components/QrDisplay";
 import { StatusBadge } from "@/components/StatusBadge";
-import type { Booking } from "@/lib/types";
+import { boatTypeLabel, type Booking } from "@/lib/types";
 
 function qrValueFor(id: string) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "";
@@ -13,6 +13,7 @@ function qrValueFor(id: string) {
 
 export function ViewQrButton({ booking }: { booking: Booking }) {
   const [open, setOpen] = useState(false);
+  const boatLabel = boatTypeLabel(booking.boat_type);
 
   return (
     <>
@@ -26,13 +27,14 @@ export function ViewQrButton({ booking }: { booking: Booking }) {
           <StatusBadge status={booking.status} />
         </div>
         <p className="caption-2 text-ink-muted no-print">
-          {booking.contact_number || "No contact number"} · {booking.pax}{" "}
+          {boatLabel} · {booking.contact_number || "No contact number"} · {booking.pax}{" "}
           {booking.pax === 1 ? "passenger" : "passengers"}
         </p>
         <QrDisplay
           value={qrValueFor(booking.id)}
           leaderName={booking.leader_name}
           contactNumber={booking.contact_number}
+          boatTypeLabel={boatLabel}
           pax={booking.pax}
           bookingId={booking.id}
         />

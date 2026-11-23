@@ -14,7 +14,8 @@ export function CreateBookingForm() {
       <div>
         <h2 className="heading-6 text-lamp-deep">New group booking</h2>
         <p className="body-6 text-ink-muted mt-1">
-          Add the group leader, contact number, and passenger count to issue a boarding pass.
+          Add the group leader, contact, boat type, and passenger count to issue a
+          boarding pass.
         </p>
       </div>
 
@@ -42,6 +43,13 @@ export function CreateBookingForm() {
           />
         </label>
         <label className="block space-y-2">
+          <span className="title-4">Boat type</span>
+          <select name="boat_type" required defaultValue="motor_boat" className="field">
+            <option value="motor_boat">Motor Boat</option>
+            <option value="bajra_boat">Bajra Boat</option>
+          </select>
+        </label>
+        <label className="block space-y-2 sm:col-span-2">
           <span className="title-4">Number of passengers</span>
           <input
             name="pax"

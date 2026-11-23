@@ -1,4 +1,4 @@
-import type { Booking } from "@/lib/types";
+import { boatTypeLabel, type Booking } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EditBookingForm } from "@/components/EditBookingForm";
 import { DeleteBookingButton } from "@/components/DeleteBookingButton";
@@ -40,6 +40,7 @@ export function BookingList({ bookings }: { bookings: Booking[] }) {
                   <StatusBadge status={booking.status} />
                 </div>
                 <p className="body-6 text-ink-muted">
+                  {boatTypeLabel(booking.boat_type)} ·{" "}
                   {booking.contact_number || "No contact"} · {booking.pax}{" "}
                   {booking.pax === 1 ? "passenger" : "passengers"} · Created{" "}
                   {formatWhen(booking.created_at)}

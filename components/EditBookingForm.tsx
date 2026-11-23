@@ -45,6 +45,18 @@ export function EditBookingForm({ booking }: { booking: Booking }) {
             />
           </label>
           <label className="block space-y-2">
+            <span className="title-4">Boat type</span>
+            <select
+              name="boat_type"
+              required
+              defaultValue={booking.boat_type || "motor_boat"}
+              className="field"
+            >
+              <option value="motor_boat">Motor Boat</option>
+              <option value="bajra_boat">Bajra Boat</option>
+            </select>
+          </label>
+          <label className="block space-y-2">
             <span className="title-4">Passengers</span>
             <input
               name="pax"

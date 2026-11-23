@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
+  parseBoatType,
   parseContactNumber,
   parsePax,
   parseStatus,
@@ -29,6 +30,7 @@ export async function createBooking(
 ): Promise<ActionResult> {
   const leaderName = String(formData.get("leader_name") ?? "").trim();
   const contactNumber = parseContactNumber(formData.get("contact_number"));
+  const boatType = parseBoatType(formData.get("boat_type"));
   const pax = parsePax(formData.get("pax"));
 
   if (!leaderName) {
@@ -40,15 +42,18 @@ export async function createBooking(
       message: "Enter a valid contact number (at least 10 digits).",
     };
   }
+  if (!boatType) {
+    return { ok: false, message: "Choose a boat type." };
+  }
   if (pax === null) {
     return { ok: false, message: "Enter a valid passenger count (1 to 500)." };
   }
 
   try {
     if (isSupabaseMode()) {
-      await supabaseCreateBooking(leaderName, contactNumber, pax);
+      await supabaseCreateBooking(leaderName, contactNumber, boatType, pax);
     } else {
-      await localCreateBooking(leaderName, contactNumber, pax);
+      await localCreateBooking(leaderName, contactNumber, boatType, pax);
     }
   } catch (error) {
     const detail =
@@ -72,6 +77,7 @@ export async function updateBooking(
   const id = String(formData.get("id") ?? "");
   const leaderName = String(formData.get("leader_name") ?? "").trim();
   const contactNumber = parseContactNumber(formData.get("contact_number"));
+  const boatType = parseBoatType(formData.get("boat_type"));
   const pax = parsePax(formData.get("pax"));
   const status = parseStatus(formData.get("status"));
 
@@ -87,6 +93,9 @@ export async function updateBooking(
       message: "Enter a valid contact number (at least 10 digits).",
     };
   }
+  if (!boatType) {
+    return { ok: false, message: "Choose a boat type." };
+  }
   if (pax === null) {
     return { ok: false, message: "Enter a valid passenger count (1 to 500)." };
   }
@@ -95,8 +104,22 @@ export async function updateBooking(
   }
 
   const updated = isSupabaseMode()
-    ? await supabaseUpdateBooking(id, leaderName, contactNumber, pax, status)
-    : await localUpdateBooking(id, leaderName, contactNumber, pax, status);
+    ? await supabaseUpdateBooking(
+        id,
+        leaderName,
+        contactNumber,
+        boatType,
+        pax,
+        status,
+      )
+    : await localUpdateBooking(
+        id,
+        leaderName,
+        contactNumber,
+        boatType,
+        pax,
+        status,
+      );
 
   if (!updated) {
     return { ok: false, message: "Could not update booking. Try again." };

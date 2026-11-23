@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { getBooking, markScanned } from "@/lib/actions/bookings";
-import type { Booking } from "@/lib/types";
+import { boatTypeLabel, type Booking } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
 
 const UUID_RE =
@@ -321,6 +321,7 @@ export function Scanner({ initialId }: { initialId?: string }) {
               <StatusBadge status={state.booking.status} />
             </div>
             <p className="body-5 text-ink-muted">
+              {boatTypeLabel(state.booking.boat_type)} ·{" "}
               {state.booking.contact_number || "No contact"} · {state.booking.pax}{" "}
               {state.booking.pax === 1 ? "passenger" : "passengers"}
             </p>

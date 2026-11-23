@@ -7,12 +7,14 @@ export function QrDisplay({
   value,
   leaderName,
   contactNumber,
+  boatTypeLabel,
   pax,
   bookingId,
 }: {
   value: string;
   leaderName: string;
   contactNumber: string;
+  boatTypeLabel: string;
   pax: number;
   bookingId: string;
 }) {
@@ -29,6 +31,7 @@ export function QrDisplay({
       value,
       leaderName,
       contactNumber,
+      boatTypeLabel,
       pax,
       bookingId,
     })
@@ -42,7 +45,7 @@ export function QrDisplay({
     return () => {
       cancelled = true;
     };
-  }, [value, leaderName, contactNumber, pax, bookingId]);
+  }, [value, leaderName, contactNumber, boatTypeLabel, pax, bookingId]);
 
   async function download() {
     setDownloading(true);
@@ -53,6 +56,7 @@ export function QrDisplay({
           value,
           leaderName,
           contactNumber,
+          boatTypeLabel,
           pax,
           bookingId,
         }));
@@ -80,7 +84,7 @@ export function QrDisplay({
             className="mx-auto w-full rounded-xl border border-border bg-white"
           />
         ) : (
-          <div className="mx-auto aspect-[720/980] w-full rounded-xl bg-background animate-pulse" />
+          <div className="mx-auto aspect-[720/1040] w-full rounded-xl bg-background animate-pulse" />
         )}
       </div>
 
